@@ -1,0 +1,198 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "46591bb9-b933-44d4-9410-dc933747908c",
+   "metadata": {},
+   "source": [
+    "# Diffusion Models"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "08d818c5-ff5c-4525-96dc-f6f231aa677b",
+   "metadata": {},
+   "source": [
+    "Diffusion models are generative models which learn to reverse diffusion processes."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4f9aaf17-d4ad-4ac3-a6c3-930e33c3df12",
+   "metadata": {},
+   "source": [
+    "## Stochastic Processes And Diffusion"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "446e3781-7fac-4421-9a12-2513aa187240",
+   "metadata": {},
+   "source": [
+    "To understand diffusion models, we first need to understand stochastic processes. A stochastic process is a family of random variables $\\{X_t\\}$, where $t \\in T$ is called the *index*. Very often, $t$ has the interpretation of *time*, however this isn't a requirement. A Markov process is a stochastic process where the $X_t$ depends only on $X_{t-1}$. A diffusion process is one type of Markov process, which for the sake of simplicity, we will not define rigorously here. A typical example is the Weiner process, which can be used to model Brownian motion. At each time step, $X_t - X_{t - 1}$ has a Gaussian distribution with zero mean and some known variance.    "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2d46e4c5-3341-4b26-9dcb-37d8da4955d4",
+   "metadata": {},
+   "source": [
+    "$$q(x_0,\\dots,x_t) = \\prod_{i = 1}^T q(x_i|x_{i-1})$$"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "id": "e9e2c3e1-1c39-4b9e-af91-2f2489f50843",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 112,
+   "id": "6e557207-4094-4bd0-b507-2dda0cf8f8dd",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def sample_from_data_distribution():\n",
+    "    \n",
+    "    return np.random.randn()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 149,
+   "id": "3ab5aeed-4ba5-4830-a6e6-967e6153aac5",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def beta_schedule(t, T):\n",
+    "    return t / T # simple linear beta schedule."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 151,
+   "id": "32bdd3be-1b13-4d85-9c72-6cb4723877c4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def corrupt(xt, t, T):\n",
+    "    \n",
+    "    beta = beta_schedule(t, T)\n",
+    "    mean = xt * np.sqrt(1 - beta) # Gradually reduce the influence of x_t.\n",
+    "    variance = beta\n",
+    "    \n",
+    "    return mean + variance * np.random.randn(*xt.shape)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 152,
+   "id": "e62fba7f-d3b4-463a-a68c-21c94f9260bb",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def forward_process(xt, T):\n",
+    "    \n",
+    "    # Markov chain forward process...\n",
+    "    \n",
+    "    t = 0\n",
+    "\n",
+    "    for _ in range(T):\n",
+    "        \n",
+    "        t += 1\n",
+    "        xt = corrupt(xt, t, T) # xt ~ q(x_t|x_(t-1))\n",
+    "        \n",
+    "        yield xt"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 153,
+   "id": "83e49969-e76c-482c-852b-f6cb62cdb421",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "1.0687883047633855"
+      ]
+     },
+     "execution_count": 153,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "list(forward_process(a, 1000))[-1].var()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 154,
+   "id": "89154386-67d3-4756-b165-72e0898c4124",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def reverse_process(xt, T):\n",
+    "    \n",
+    "    t = T\n",
+    "    \n",
+    "    for _ in range(T):\n",
+    "        t -= 1\n",
+    "        xt = uncorrupt(xt, t, T)\n",
+    "        \n",
+    "        yield xt"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 156,
+   "id": "08b29126-a7c5-4b8c-b923-91e18f1538af",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def uncorrupt(xt, t, T):\n",
+    "    pass # To be approximated with a neural network\n",
+    "\n",
+    "    # nn predicts the mean (and variance) of the posterior on x_(t-1) given\n",
+    "    # xt and t. This can be assumed Gaussian due to theoretical reasons.\n",
+    "    \n",
+    "    # then we sample from this distribution to find a likely x_(t-1)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b638a742-c52a-4cae-b864-2a1524a4f9b5",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
